@@ -5,7 +5,7 @@ use std::fmt;
 const DECIMALS: u32 = 6;
 const FACTOR: u64 = 10_u64.pow(DECIMALS);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct FixedPointDecimal {
     value: u64,
 }
@@ -117,12 +117,6 @@ impl fmt::Display for FixedPointDecimal {
             DECIMALS as usize
         );
         write!(f, "{}", formatted)
-    }
-}
-
-impl Default for FixedPointDecimal {
-    fn default() -> Self {
-        FixedPointDecimal { value: 0 }
     }
 }
 
