@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::convert::TryFrom;
-use std::{fmt, u64};
+use std::fmt;
 
 const DECIMALS: u32 = 6;
 const FACTOR: u64 = 10_u64.pow(DECIMALS);
