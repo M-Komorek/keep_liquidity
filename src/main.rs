@@ -1,10 +1,12 @@
 mod fixed_point_decimal;
 mod liquidity_pool;
-mod types;
+mod tokens;
+mod utils;
 
 use crate::fixed_point_decimal::FixedPointDecimal;
 use crate::liquidity_pool::LiquidityPool;
-use crate::types::{Percentage, Price, StakedTokenAmount, TokenAmount};
+use crate::tokens::{StakedTokenAmount, TokenAmount};
+use crate::utils::{Percentage, Price};
 
 fn main() {
     let price = Price(FixedPointDecimal::try_from(1.5).unwrap());
@@ -14,15 +16,23 @@ fn main() {
 
     let mut liquidity_pool = LiquidityPool::init(price, liquidity_target, min_fee, max_fee);
 
-    let lp_tokens = liquidity_pool.add_liquidity(TokenAmount(FixedPointDecimal::from(100)));
+    let lp_tokens = liquidity_pool
+        .add_liquidity(TokenAmount(FixedPointDecimal::try_from(100).unwrap()))
+        .unwrap();
     println!("100 tokens has beed added: {}", lp_tokens);
 
-    let swapped = liquidity_pool.swap(StakedTokenAmount(FixedPointDecimal::from(6)));
-    println!("6 stacked tokens has beed swapped: {}", swapped.0);
+    let swapped = liquidity_pool
+        .swap(StakedTokenAmount(FixedPointDecimal::try_from(6).unwrap()))
+        .unwrap();
+    println!("6 stacked tokens has beed swapped: {}", swapped);
 
-    let lp_tokens = liquidity_pool.add_liquidity(TokenAmount(FixedPointDecimal::from(10)));
-    println!("10 tokens has beed added: {}", lp_tokens.0);
+    let lp_tokens = liquidity_pool
+        .add_liquidity(TokenAmount(FixedPointDecimal::try_from(10).unwrap()))
+        .unwrap();
+    println!("10 tokens has beed added: {}", lp_tokens);
 
-    let swapped = liquidity_pool.swap(StakedTokenAmount(FixedPointDecimal::from(30)));
-    println!("30 stacked tokens has beed swapped: {}", swapped.0);
+    let swapped = liquidity_pool
+        .swap(StakedTokenAmount(FixedPointDecimal::try_from(30).unwrap()))
+        .unwrap();
+    println!("30 stacked tokens has beed swapped: {}", swapped);
 }
