@@ -124,7 +124,7 @@ impl LiquidityPool {
         fee: &Percentage,
     ) -> Result<FixedPointDecimal, FixedPointError> {
         let fee_value = (fee.0 * token_amount)?;
-        Ok((token_amount - fee_value)?)
+        token_amount - fee_value
     }
 }
 
