@@ -1,23 +1,39 @@
-# Liquidity Pool Model in Rust
+# Keep Liquidity
 
-This repository implements a mathematical model of a Liquidity Pool inspired by the Marinade Protocol. The model *will* provides immediate liquidity unstaking, allowing users to swap between Token and StakedToken using a pool of liquidity managed by liquidity providers.
+Keep Liquidity is a Rust-based Liquidity Pool protocol inspired by the [Marinade Protocol](https://docs.marinade.finance/marinade-protocol/system-overview/unstake-liquidity-pool). The core idea is to facilitate smooth swaps between liquid tokens and staked tokens while empowering liquidity providers to manage the pool. Two main actors interact with the pool:
+  - Swappers who exchange Token for StakedToken (and vice versa).
+  - Liquidity Providers who stake their assets into the pool to earn passive returns.
 
-## Overview
-The Liquidity Pool model features three token types:
-  - Token: The base unit.
-  - StakedToken: A unit backed by a specific amount of Token, with an exchange ratio determined by the price.
-  - LpToken: A unit representing a share of the liquidity pool. Liquidity providers receive LpToken when they add liquidity to the pool and can redeem them for a proportional amount of Token and StakedToken.
+## 🌟 Features
+  - Token Swap: Seamlessly swap between Token and StakedToken assets.
+  - LP Management: Add and remove liquidity using LpToken to earn rewards.
+  - Customizable Fees: Adjustable fees for token swaps.
+  - Rust Implementation: Built with the speed and safety of Rust.
 
-The model includes two main actors:
-  - Swapper: An actor who exchanges StakedToken for Token.
-  - Liquidity Provider: An actor who provides liquidity to the pool in exchange for LpToken.
+## Usage
+Initialize the Pool
+```rust
+let liquidity_pool = LiquidityPool::init(price, liquidity_target, min_fee, max_fee);
+```
 
-The Liquidity Pool supports the following operations:
-  - `LiquidityPool::init`: Initializes the liquidity pool with configuration parameters such as price, fee range, and liquidity target.
-  - `LiquidityPool::add_liquidity`: Adds Token to the pool, minting new LpToken.
-  - `LiquidityPool::remove_liquidity`: Redeems LpToken for a proportional amount of Token and StakedToken.
-  - `LiquidityPool::swap`: Swaps StakedToken for Token, applying a fee based on the pool's configuration.
+Add Liquidity
+```rust
+liquidity_pool.add_liquidity(amount_of_new_tokens);
+```
 
-## TODO
-  - Finish implementation - *LiquidityPool::remove_liquidity*.
-  - Write the missing tests.
+Swap Tokens
+```rust
+liquidity_pool.swap(staked_token_amount);
+```
+
+Remove Liquidity
+```rust
+liquidity_pool.remove_liquidity(lp_token_amount);
+```
+
+## Tests
+
+Run the tests to verify everything works as expected:
+```bash
+cargo test
+```
