@@ -69,15 +69,6 @@ impl std::ops::Add for FixedPointDecimal {
     }
 }
 
-impl std::ops::AddAssign for FixedPointDecimal {
-    fn add_assign(&mut self, other: FixedPointDecimal) {
-        self.value = self
-            .value
-            .checked_add(other.value)
-            .expect("Overflow during addition");
-    }
-}
-
 impl std::ops::Sub for FixedPointDecimal {
     type Output = Result<Self, FixedPointError>;
 
@@ -87,15 +78,6 @@ impl std::ops::Sub for FixedPointDecimal {
         } else {
             Err(FixedPointError::Underflow)
         }
-    }
-}
-
-impl std::ops::SubAssign for FixedPointDecimal {
-    fn sub_assign(&mut self, other: FixedPointDecimal) {
-        self.value = self
-            .value
-            .checked_sub(other.value)
-            .expect("Underflow during subtraction");
     }
 }
 
@@ -229,14 +211,6 @@ mod tests {
     }
 
     #[test]
-    fn test_add_assign_success() {
-        let mut num1 = FixedPointDecimal::try_from(12.345678).unwrap();
-        let num2 = FixedPointDecimal::try_from(23.456789).unwrap();
-        num1 += num2;
-        assert_eq!(num1.value, 35802467);
-    }
-
-    #[test]
     fn test_subtraction_success() {
         let num1 = FixedPointDecimal::try_from(23.456789).unwrap();
         let num2 = FixedPointDecimal::try_from(12.345678).unwrap();
@@ -251,14 +225,6 @@ mod tests {
         let result = num1 - num2;
         assert!(result.is_err());
         assert_eq!(result.err().unwrap(), FixedPointError::Underflow);
-    }
-
-    #[test]
-    fn test_sub_assign_success() {
-        let mut num1 = FixedPointDecimal::try_from(23.456789).unwrap();
-        let num2 = FixedPointDecimal::try_from(12.345678).unwrap();
-        num1 -= num2;
-        assert_eq!(num1.value, 11111111);
     }
 
     #[test]

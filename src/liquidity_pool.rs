@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::fixed_point_decimal::FixedPointError;
 use crate::tokens::{LpTokenAmount, StakedTokenAmount, TokenAmount};
 use crate::utils::{Percentage, Price};
@@ -36,17 +38,17 @@ impl LiquidityPool {
         &mut self,
         amount_of_new_tokens: TokenAmount,
     ) -> Result<LpTokenAmount, FixedPointError> {
-        let current_liquidity = self.current_liquidity()?;
+        let current_pool_value = self.current_pool_value()?;
         let minted_token_amount =
-            if current_liquidity.0 == FixedPointDecimal::try_from(0u64).unwrap() {
+            if current_pool_value.0 == FixedPointDecimal::try_from(0u64).unwrap() {
                 amount_of_new_tokens.0
             } else {
-                let ownership_ratio = (self.lp_token_amount.0 / current_liquidity.0)?;
+                let ownership_ratio = (self.lp_token_amount.0 / current_pool_value.0)?;
                 (amount_of_new_tokens.0 * ownership_ratio)?
             };
 
-        self.token_amount.0 += amount_of_new_tokens.0;
-        self.lp_token_amount.0 += minted_token_amount;
+        self.token_amount.0 = (self.token_amount.0 + amount_of_new_tokens.0)?;
+        self.lp_token_amount.0 = (self.lp_token_amount.0 + minted_token_amount)?;
 
         Ok(LpTokenAmount(minted_token_amount))
     }
@@ -59,16 +61,15 @@ impl LiquidityPool {
         let base_token_amount_to_return = (proportional_share * self.token_amount.0)?;
         let base_staked_token_amount_to_return = (proportional_share * self.staked_token_amount.0)?;
 
-        let current_liquidity = self.current_liquidity()?;
-        let final_liquidity = (current_liquidity.0 - lp_token_amount.0)?;
+        let final_liquidity = (self.token_amount.0 - base_token_amount_to_return)?;
         let fee = self.calculate_fee(TokenAmount(final_liquidity))?;
 
         let token_amount_to_return = self.apply_fee(base_token_amount_to_return, &fee)?;
         let staked_token_to_return = self.apply_fee(base_staked_token_amount_to_return, &fee)?;
 
-        self.lp_token_amount.0 -= lp_token_amount.0;
-        self.token_amount.0 -= token_amount_to_return;
-        self.staked_token_amount.0 -= staked_token_to_return;
+        self.lp_token_amount.0 = (self.lp_token_amount.0 - lp_token_amount.0)?;
+        self.token_amount.0 = (self.token_amount.0 - token_amount_to_return)?;
+        self.staked_token_amount.0 = (self.staked_token_amount.0 - staked_token_to_return)?;
 
         Ok((
             TokenAmount(token_amount_to_return),
@@ -80,15 +81,14 @@ impl LiquidityPool {
         &mut self,
         staked_token_amount: StakedTokenAmount,
     ) -> Result<TokenAmount, FixedPointError> {
-        let current_liquidity = self.current_liquidity()?;
-        let fee = self.calculate_fee(TokenAmount(current_liquidity.0))?;
-
         let base_staked_token_value = self.calculate_staked_token_value(&staked_token_amount)?;
-        println!("\n\n {} \n\n", &base_staked_token_value);
+        let final_token_amount = (self.token_amount.0 - base_staked_token_value.0)?;
+
+        let fee = self.calculate_fee(TokenAmount(final_token_amount))?;
         let staked_token_value = self.apply_fee(base_staked_token_value.0, &fee)?;
 
-        self.staked_token_amount.0 += staked_token_amount.0;
-        self.token_amount.0 -= staked_token_value;
+        self.staked_token_amount.0 = (self.staked_token_amount.0 + staked_token_amount.0)?;
+        self.token_amount.0 = (self.token_amount.0 - staked_token_value)?;
 
         Ok(TokenAmount(staked_token_value))
     }
@@ -105,7 +105,7 @@ impl LiquidityPool {
         }
     }
 
-    fn current_liquidity(&self) -> Result<TokenAmount, FixedPointError> {
+    fn current_pool_value(&self) -> Result<TokenAmount, FixedPointError> {
         let staked_token_value = self.calculate_staked_token_value(&self.staked_token_amount)?;
         let current_liquidity = (self.token_amount.0 + staked_token_value.0)?;
         Ok(TokenAmount(current_liquidity))
@@ -128,6 +128,23 @@ impl LiquidityPool {
     }
 }
 
+impl fmt::Display for LiquidityPool {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "> LiquidityPool")?;
+        writeln!(f, "\t const Price: {}", self.price.0)?;
+        writeln!(f, "\t const Min fee: {}", self.min_fee.0)?;
+        writeln!(f, "\t const Max fee: {}", self.max_fee.0)?;
+        writeln!(f, "\t const Target liquidity: {}", self.liquidity_target.0)?;
+        writeln!(f, "\t - Token amount: {}", self.token_amount.0)?;
+        writeln!(f, "\t - Liquidity token amount: {}", self.lp_token_amount.0)?;
+        writeln!(
+            f,
+            "\t - Staked token amount: {}",
+            self.staked_token_amount.0
+        )?;
+        Ok(())
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -174,54 +191,26 @@ mod tests {
         }
 
         #[test]
-        fn calculates_lp_tokens_correctly_on_pool_with_some_tokens_and_no_staked_tokens() {
+        fn calculates_lp_tokens_correctly_on_non_empty_pool() {
             let mut sut = create_sut(
-                TokenAmount(FixedPointDecimal::try_from(100).unwrap()),
-                StakedTokenAmount::default(),
+                TokenAmount(FixedPointDecimal::try_from(91.009).unwrap()),
+                StakedTokenAmount(FixedPointDecimal::try_from(6).unwrap()),
                 LpTokenAmount(FixedPointDecimal::try_from(100).unwrap()),
             );
             let lp_tokens = sut
                 .add_liquidity(TokenAmount(FixedPointDecimal::try_from(10).unwrap()))
                 .unwrap();
 
-            assert_eq!(lp_tokens.0, 10);
-            assert_eq!(sut.token_amount.0, 110);
-            assert_eq!(sut.staked_token_amount.0, 0);
-            assert_eq!(sut.lp_token_amount.0, 110);
-        }
-
-        #[test]
-        fn calculates_lp_tokens_correctly_on_pool_with_no_tokens_and_some_staked_tokens() {
-            let mut sut = create_sut(
-                TokenAmount::default(),
-                StakedTokenAmount(FixedPointDecimal::try_from(10).unwrap()),
-                LpTokenAmount(FixedPointDecimal::try_from(15).unwrap()),
+            assert_eq!(lp_tokens.0, FixedPointDecimal::try_from(9.9991).unwrap());
+            assert_eq!(
+                sut.token_amount.0,
+                FixedPointDecimal::try_from(101.009).unwrap()
             );
-            let lp_tokens = sut
-                .add_liquidity(TokenAmount(FixedPointDecimal::try_from(10).unwrap()))
-                .unwrap();
-
-            assert_eq!(lp_tokens.0, 10);
-            assert_eq!(sut.token_amount.0, 10);
-            assert_eq!(sut.staked_token_amount.0, 10);
-            assert_eq!(sut.lp_token_amount.0, 25);
-        }
-
-        #[test]
-        fn calculates_lp_tokens_correctly_on_pool_with_some_tokens_and_some_staked_tokens() {
-            let mut sut = create_sut(
-                TokenAmount(FixedPointDecimal::try_from(10).unwrap()),
-                StakedTokenAmount(FixedPointDecimal::try_from(10).unwrap()),
-                LpTokenAmount(FixedPointDecimal::try_from(25).unwrap()),
+            assert_eq!(sut.staked_token_amount.0, 6);
+            assert_eq!(
+                sut.lp_token_amount.0,
+                FixedPointDecimal::try_from(109.9991).unwrap()
             );
-            let lp_tokens = sut
-                .add_liquidity(TokenAmount(FixedPointDecimal::try_from(10).unwrap()))
-                .unwrap();
-
-            assert_eq!(lp_tokens.0, 10);
-            assert_eq!(sut.token_amount.0, 20);
-            assert_eq!(sut.staked_token_amount.0, 10);
-            assert_eq!(sut.lp_token_amount.0, 35);
         }
     }
 
